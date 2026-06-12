@@ -1,0 +1,1004 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Blue Sky</title>
+    <!-- اضافه کردن کتابخانه Appwrite -->
+    <script src="https://cdn.jsdelivr.net/npm/appwrite@15.0.0"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Vazirmatn:wght@300;400;500;700;900&display=swap');
+        * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Vazirmatn', sans-serif; -webkit-tap-highlight-color: transparent; }
+        body { width: 100%; min-height: 100vh; overflow-x: hidden; background: #0f172a; color: #fff; }
+
+        #splash-screen { position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: 9999; display: flex; align-items: center; justify-content: center; flex-direction: column; background: #0f172a; }
+        #splash-screen video { position: absolute; top: 0; left: 0; width: 100%; height: 100%; object-fit: cover; }
+        #splash-screen .overlay { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(15, 23, 42, 0.6); }
+        #splash-screen .splash-content { position: relative; z-index: 2; text-align: center; animation: fadeInUp 1s ease; }
+        #splash-screen .splash-content h1 { font-size: 3.5rem; font-weight: 900; color: #fff; text-shadow: 0 0 40px rgba(56, 189, 248, 0.8); letter-spacing: 2px; }
+        #splash-screen .splash-content .subtitle { color: rgba(255,255,255,0.8); font-size: 1rem; margin-top: 10px; font-weight: 300; }
+        .loader { margin-top: 30px; width: 45px; height: 45px; border: 3px solid rgba(255,255,255,0.1); border-top-color: #38bdf8; border-radius: 50%; animation: spin 1s linear infinite; }
+        @keyframes spin { to { transform: rotate(360deg); } }
+        @keyframes fadeInUp { from { opacity: 0; transform: translateY(30px); } to { opacity: 1; transform: translateY(0); } }
+
+        #ban-screen { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: 10000; overflow: hidden; }
+        #ban-screen video { position: absolute; top: 0; left: 0; width: 100%; height: 100%; object-fit: cover; }
+        #ban-screen .ban-overlay { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.85); display: flex; align-items: center; justify-content: center; }
+        .ban-box { background: rgba(30, 10, 10, 0.95); backdrop-filter: blur(20px); border: 2px solid rgba(239, 68, 68, 0.5); border-radius: 24px; padding: 35px 25px; max-width: 380px; width: 90%; text-align: center; animation: fadeInUp 0.5s ease; }
+        .ban-box .ban-icon { font-size: 3.5rem; margin-bottom: 15px; }
+        .ban-box h2 { color: #ef4444; font-size: 1.4rem; margin-bottom: 15px; }
+        .ban-box .ban-reason { color: rgba(255,255,255,0.8); font-size: 0.9rem; margin-bottom: 10px; padding: 12px; background: rgba(239, 68, 68, 0.1); border-radius: 12px; border: 1px solid rgba(239, 68, 68, 0.2); }
+        .ban-box .ban-time { color: #38bdf8; font-size: 1rem; font-weight: 700; margin-top: 15px; }
+        .ban-box .ban-remaining { color: rgba(255,255,255,0.5); font-size: 0.8rem; margin-top: 8px; }
+
+        .auth-container { display: none; width: 100%; min-height: 100vh; background: linear-gradient(135deg, #0f172a 0%, #1e293b 50%, #0f172a 100%); position: relative; overflow-y: auto; }
+        .auth-container.active { display: flex; align-items: center; justify-content: center; padding: 20px; animation: fadeInUp 0.5s ease; }
+        .auth-box { background: rgba(255,255,255,0.05); backdrop-filter: blur(20px); border: 1px solid rgba(255,255,255,0.1); border-radius: 24px; padding: 35px 25px; width: 100%; max-width: 400px; box-shadow: 0 20px 50px rgba(0,0,0,0.3); }
+        .auth-box .logo { text-align: center; margin-bottom: 25px; }
+        .auth-box .logo h2 { font-size: 1.8rem; font-weight: 900; color: #38bdf8; text-shadow: 0 0 20px rgba(56, 189, 248, 0.5); }
+        .auth-box .logo p { color: rgba(255,255,255,0.5); font-size: 0.8rem; margin-top: 5px; }
+        .form-group { margin-bottom: 14px; position: relative; }
+        .form-group label { display: block; color: rgba(255,255,255,0.7); font-size: 0.8rem; margin-bottom: 6px; font-weight: 400; }
+        .form-group input, .form-group select { width: 100%; padding: 13px 14px; background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.1); border-radius: 12px; color: #fff; font-size: 0.9rem; transition: all 0.3s ease; outline: none; }
+        .form-group input:focus, .form-group select:focus { border-color: #38bdf8; background: rgba(56, 189, 248, 0.08); box-shadow: 0 0 15px rgba(56, 189, 248, 0.15); }
+        .form-group input::placeholder { color: rgba(255,255,255,0.3); }
+        .form-group select option { background: #0f172a; color: #fff; }
+        .profile-upload { text-align: center; margin-bottom: 15px; }
+        .profile-upload .avatar-circle { width: 90px; height: 90px; border-radius: 50%; background: rgba(255,255,255,0.06); border: 2px dashed rgba(56, 189, 248, 0.4); margin: 0 auto 8px; display: flex; align-items: center; justify-content: center; cursor: pointer; transition: all 0.3s ease; overflow: hidden; }
+        .profile-upload .avatar-circle:hover { border-color: #38bdf8; background: rgba(56, 189, 248, 0.1); }
+        .profile-upload .avatar-circle img { width: 100%; height: 100%; object-fit: cover; display: none; }
+        .profile-upload .avatar-circle img.show { display: block; }        .profile-upload .avatar-circle .upload-icon { font-size: 1.8rem; color: rgba(56, 189, 248, 0.6); }
+        .profile-upload .avatar-circle .upload-icon.hidden { display: none; }
+        .profile-upload p { color: rgba(255,255,255,0.4); font-size: 0.75rem; }
+        .btn-primary { width: 100%; padding: 14px; background: linear-gradient(135deg, #38bdf8, #0284c7); border: none; border-radius: 12px; color: #fff; font-size: 1rem; font-weight: 700; cursor: pointer; transition: all 0.3s ease; margin-top: 10px; }
+        .btn-primary:hover { transform: translateY(-2px); box-shadow: 0 8px 25px rgba(56, 189, 248, 0.4); }
+        .auth-switch { text-align: center; margin-top: 20px; color: rgba(255,255,255,0.5); font-size: 0.8rem; }
+        .auth-switch a { color: #38bdf8; text-decoration: none; font-weight: 500; cursor: pointer; }
+
+        #main-app { display: none; width: 100%; min-height: 100vh; position: relative; background: #0f172a; }
+        #main-app.active { display: block; }
+        .video-bg { position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: 0; overflow: hidden; }
+        .video-bg video { width: 100%; height: 100%; object-fit: cover; }
+        .video-bg .dark-overlay { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(15, 23, 42, 0.6); }
+        .top-header { position: fixed; top: 0; left: 0; width: 100%; z-index: 100; padding: 10px 15px; display: flex; align-items: center; justify-content: space-between; background: rgba(15, 23, 42, 0.85); backdrop-filter: blur(15px); border-bottom: 1px solid rgba(255,255,255,0.08); }
+        .top-header .user-info { display: flex; align-items: center; gap: 10px; }
+        .top-header .user-info img { width: 34px; height: 34px; border-radius: 50%; object-fit: cover; border: 2px solid #38bdf8; }
+        .top-header .user-info .default-avatar { width: 34px; height: 34px; border-radius: 50%; background: linear-gradient(135deg, #38bdf8, #0284c7); display: flex; align-items: center; justify-content: center; font-size: 0.9rem; color: #fff; border: 2px solid #38bdf8; }
+        .top-header .user-info span { color: #fff; font-weight: 500; font-size: 0.85rem; }
+        .top-header .role-badge { font-size: 0.6rem; padding: 2px 6px; border-radius: 6px; margin-right: 5px; font-weight: 700; }
+        .role-badge.creator { background: linear-gradient(135deg, #fbbf24, #f59e0b); color: #000; }
+        .role-badge.support { background: linear-gradient(135deg, #22c55e, #16a34a); color: #fff; }
+        .top-header .app-name { font-size: 1.1rem; font-weight: 900; color: #38bdf8; text-shadow: 0 0 15px rgba(56, 189, 248, 0.5); }
+        .page-content { position: relative; z-index: 10; padding-top: 65px; padding-bottom: 75px; min-height: 100vh; }
+        .page { display: none; padding: 15px; animation: fadeInUp 0.4s ease; }
+        .page.active { display: block; }
+        .welcome-card { background: rgba(255,255,255,0.06); backdrop-filter: blur(15px); border: 1px solid rgba(255,255,255,0.1); border-radius: 18px; padding: 20px; text-align: center; margin-bottom: 15px; }
+        .welcome-card h2 { color: #fff; font-size: 1.2rem; margin-bottom: 5px; }
+        .welcome-card p { color: rgba(255,255,255,0.6); font-size: 0.8rem; }
+        .subscription-status { background: rgba(239, 68, 68, 0.1); border: 1px solid rgba(239, 68, 68, 0.3); border-radius: 14px; padding: 15px; text-align: center; margin-bottom: 15px; }
+        .subscription-status.active { background: rgba(34, 197, 94, 0.1); border: 1px solid rgba(34, 197, 94, 0.3); }
+        .subscription-status h3 { color: #ef4444; font-size: 0.95rem; margin-bottom: 5px; }
+        .subscription-status.active h3 { color: #22c55e; }
+        .subscription-status p { color: rgba(255,255,255,0.6); font-size: 0.8rem; }
+        .subscription-status .buy-btn { margin-top: 10px; padding: 8px 20px; background: linear-gradient(135deg, #38bdf8, #0284c7); border: none; border-radius: 10px; color: #fff; font-weight: 500; font-size: 0.8rem; cursor: pointer; }
+        .section-title { color: #fff; font-size: 1rem; font-weight: 700; margin-bottom: 12px; display: flex; align-items: center; gap: 8px; }
+        .section-title::before { content: ''; width: 4px; height: 18px; background: #38bdf8; border-radius: 2px; }
+        .video-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; }
+        .video-card { background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.08); border-radius: 14px; overflow: hidden; cursor: pointer; transition: all 0.3s ease; }
+        .video-card:hover { transform: translateY(-3px); border-color: rgba(56, 189, 248, 0.3); }
+        .thumbnail-video-container { width: 100%; height: 130px; position: relative; overflow: hidden; background: #000; }
+        .video-thumb { width: 100%; height: 100%; object-fit: cover; }
+        .play-icon { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 40px; height: 40px; background: rgba(56, 189, 248, 0.85); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 1.2rem; color: #fff; box-shadow: 0 4px 15px rgba(0,0,0,0.3); }
+        .video-card .video-info { padding: 10px; }
+        .video-card .video-info h4 { color: #fff; font-size: 0.85rem; margin-bottom: 3px; }
+        .video-card .video-info p { color: rgba(255,255,255,0.4); font-size: 0.7rem; }
+        
+        #video-player-page { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: 200; background: #000; }
+        #video-player-page.active { display: flex; flex-direction: column; }
+        .player-header { padding: 10px 15px; background: rgba(15, 23, 42, 0.95); display: flex; align-items: center; justify-content: space-between; }
+        .player-header .back-btn { background: none; border: none; color: #38bdf8; font-size: 1.2rem; cursor: pointer; }        .player-header h3 { color: #fff; font-size: 0.95rem; }
+        .player-header .download-btn { background: linear-gradient(135deg, #38bdf8, #0284c7); border: none; padding: 6px 12px; border-radius: 8px; color: #fff; font-size: 0.75rem; cursor: pointer; }
+        .player-header .download-btn:disabled { background: rgba(255,255,255,0.1); cursor: not-allowed; opacity: 0.5; }
+        .video-container { flex: 1; display: flex; align-items: center; justify-content: center; }
+        .video-container video { width: 100%; height: 100%; object-fit: contain; }
+
+        .shop-section { margin-bottom: 20px; }
+        .shop-section h3 { color: #38bdf8; font-size: 0.95rem; margin-bottom: 10px; padding-right: 10px; border-right: 3px solid #38bdf8; }
+        .shop-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; }
+        .shop-item { background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.1); border-radius: 14px; padding: 15px; text-align: center; transition: all 0.3s ease; }
+        .shop-item:hover { transform: translateY(-3px); border-color: rgba(56, 189, 248, 0.3); }
+        .shop-item .item-icon { font-size: 2rem; margin-bottom: 8px; }
+        .shop-item h4 { color: #fff; font-size: 0.85rem; margin-bottom: 5px; }
+        .shop-item .price { color: #38bdf8; font-weight: 700; font-size: 0.9rem; }
+        .shop-item .buy-btn { display: block; width: 100%; margin-top: 10px; padding: 8px; background: linear-gradient(135deg, #f59e0b, #d97706); border: none; border-radius: 10px; color: #fff; font-weight: 500; font-size: 0.8rem; cursor: pointer; }
+        .subscription-item { background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.1); border-radius: 14px; padding: 15px; margin-bottom: 10px; }
+        .subscription-item h4 { color: #fff; font-size: 0.9rem; margin-bottom: 10px; }
+        .subscription-item select { width: 100%; padding: 10px; background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.12); border-radius: 10px; color: #fff; font-size: 0.85rem; margin-bottom: 8px; outline: none; }
+        .subscription-item select option { background: #0f172a; color: #fff; }
+        .subscription-item .buy-btn { width: 100%; padding: 10px; background: linear-gradient(135deg, #f59e0b, #d97706); border: none; border-radius: 10px; color: #fff; font-weight: 500; font-size: 0.85rem; cursor: pointer; }
+
+        .account-header { text-align: center; padding: 20px 0; }
+        .account-header .big-avatar { width: 90px; height: 90px; border-radius: 50%; object-fit: cover; border: 3px solid #38bdf8; margin: 0 auto 12px; display: block; box-shadow: 0 0 25px rgba(56, 189, 248, 0.3); }
+        .account-header .default-big-avatar { width: 90px; height: 90px; border-radius: 50%; background: linear-gradient(135deg, #38bdf8, #0284c7); display: flex; align-items: center; justify-content: center; font-size: 2.5rem; color: #fff; margin: 0 auto 12px; border: 3px solid #38bdf8; box-shadow: 0 0 25px rgba(56, 189, 248, 0.3); }
+        .account-header h2 { color: #fff; font-size: 1.2rem; }
+        .account-header p { color: rgba(255,255,255,0.5); font-size: 0.8rem; margin-top: 3px; }
+        .wallet-card { background: linear-gradient(135deg, rgba(56, 189, 248, 0.15), rgba(99, 102, 241, 0.15)); border: 1px solid rgba(56, 189, 248, 0.3); border-radius: 18px; padding: 20px; text-align: center; margin-bottom: 15px; }
+        .wallet-card h3 { color: rgba(255,255,255,0.7); font-size: 0.85rem; margin-bottom: 8px; }
+        .wallet-card .balance { color: #38bdf8; font-size: 1.8rem; font-weight: 900; text-shadow: 0 0 20px rgba(56, 189, 248, 0.5); }
+        .wallet-card .balance span { font-size: 0.9rem; color: rgba(255,255,255,0.6); }
+        .subscription-info { background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.08); border-radius: 14px; padding: 15px; margin-bottom: 12px; }
+        .subscription-info h4 { color: #38bdf8; font-size: 0.9rem; margin-bottom: 10px; }
+        .sub-item { display: flex; justify-content: space-between; align-items: center; padding: 8px 0; border-bottom: 1px solid rgba(255,255,255,0.05); }
+        .sub-item:last-child { border-bottom: none; }
+        .sub-item .label { color: rgba(255,255,255,0.6); font-size: 0.8rem; }
+        .sub-item .value { color: #fff; font-size: 0.85rem; font-weight: 500; }
+        .sub-item .value.active { color: #22c55e; }
+        .sub-item .value.expired { color: #ef4444; }
+        .account-info-list { margin-top: 15px; }
+        .info-item { background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.08); border-radius: 14px; padding: 14px 18px; margin-bottom: 10px; display: flex; align-items: center; justify-content: space-between; }
+        .info-item .info-label { color: rgba(255,255,255,0.5); font-size: 0.8rem; }
+        .info-item .info-value { color: #fff; font-size: 0.85rem; font-weight: 500; }
+        .edit-profile-btn { width: 100%; padding: 13px; background: rgba(56, 189, 248, 0.15); border: 1px solid rgba(56, 189, 248, 0.3); border-radius: 12px; color: #38bdf8; font-size: 0.9rem; font-weight: 700; cursor: pointer; margin-top: 10px; }
+        .logout-btn { width: 100%; padding: 13px; background: rgba(239, 68, 68, 0.15); border: 1px solid rgba(239, 68, 68, 0.3); border-radius: 12px; color: #ef4444; font-size: 0.9rem; font-weight: 700; cursor: pointer; margin-top: 15px; }
+        .user-card { background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.08); border-radius: 14px; padding: 15px; margin-bottom: 10px; display: flex; align-items: center; gap: 12px; }
+        .user-card .user-avatar { width: 45px; height: 45px; border-radius: 50%; object-fit: cover; border: 2px solid #38bdf8; }
+        .user-card .default-user-avatar { width: 45px; height: 45px; border-radius: 50%; background: linear-gradient(135deg, #38bdf8, #0284c7); display: flex; align-items: center; justify-content: center; font-size: 1.2rem; color: #fff; border: 2px solid #38bdf8; }
+        .user-card .user-info { flex: 1; }
+        .user-card .user-info h4 { color: #fff; font-size: 0.9rem; margin-bottom: 3px; }
+        .user-card .user-info p { color: rgba(255,255,255,0.5); font-size: 0.75rem; }        .user-card .status-dot { width: 10px; height: 10px; border-radius: 50%; margin-left: 8px; }
+        .user-card .status-dot.online { background: #22c55e; box-shadow: 0 0 8px rgba(34, 255, 130, 0.5); }
+        .user-card .status-dot.offline { background: rgba(255,255,255,0.3); }
+        .user-card .manage-btn { padding: 6px 12px; background: rgba(56, 189, 248, 0.2); border: 1px solid rgba(56, 189, 248, 0.3); border-radius: 8px; color: #38bdf8; font-size: 0.75rem; cursor: pointer; }
+        .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: 300; background: rgba(0,0,0,0.7); align-items: center; justify-content: center; padding: 20px; }
+        .modal.active { display: flex; }
+        .modal-content { background: rgba(30, 41, 59, 0.95); backdrop-filter: blur(20px); border: 1px solid rgba(255,255,255,0.1); border-radius: 20px; padding: 25px; max-width: 400px; width: 100%; max-height: 85vh; overflow-y: auto; animation: fadeInUp 0.3s ease; }
+        .modal-content h3 { color: #38bdf8; font-size: 1.1rem; margin-bottom: 15px; text-align: center; }
+        .modal-content .close-btn { float: left; background: none; border: none; color: rgba(255,255,255,0.5); font-size: 1.5rem; cursor: pointer; margin-top: -10px; }
+        .modal-content .btn-danger { width: 100%; padding: 12px; background: rgba(239, 68, 68, 0.2); border: 1px solid rgba(239, 68, 68, 0.4); border-radius: 12px; color: #ef4444; font-size: 0.9rem; font-weight: 700; cursor: pointer; margin-top: 10px; }
+        .bottom-nav { position: fixed; bottom: 0; left: 0; width: 100%; z-index: 100; background: rgba(15, 23, 42, 0.92); backdrop-filter: blur(20px); border-top: 1px solid rgba(255,255,255,0.08); display: flex; align-items: center; justify-content: space-around; padding: 8px 0; }
+        .nav-item { display: flex; flex-direction: column; align-items: center; gap: 2px; cursor: pointer; padding: 6px 15px; border-radius: 12px; transition: all 0.3s ease; position: relative; }
+        .nav-item.active { background: rgba(56, 189, 248, 0.12); }
+        .nav-item .nav-icon { font-size: 1.3rem; color: rgba(255,255,255,0.4); transition: all 0.3s ease; }
+        .nav-item.active .nav-icon { color: #38bdf8; filter: drop-shadow(0 0 6px rgba(56, 189, 248, 0.5)); }
+        .nav-item .nav-label { font-size: 0.65rem; color: rgba(255,255,255,0.4); font-weight: 500; transition: all 0.3s ease; }
+        .nav-item.active .nav-label { color: #38bdf8; }
+        .nav-item.active::before { content: ''; position: absolute; top: -6px; width: 25px; height: 2px; background: #38bdf8; border-radius: 2px; box-shadow: 0 0 8px rgba(56, 189, 248, 0.5); }
+        .toast { position: fixed; top: 20px; left: 50%; transform: translateX(-50%) translateY(-100px); background: rgba(30, 41, 59, 0.95); backdrop-filter: blur(15px); border: 1px solid rgba(56, 189, 248, 0.3); padding: 12px 24px; border-radius: 12px; color: #fff; font-size: 0.85rem; z-index: 10000; transition: transform 0.4s ease; text-align: center; }
+        .toast.show { transform: translateX(-50%) translateY(0); }
+        .toast.error { border-color: rgba(239, 68, 68, 0.5); }
+        .toast.success { border-color: rgba(34, 197, 94, 0.5); }
+        
+        .sync-indicator { position: fixed; top: 60px; right: 10px; z-index: 99; padding: 5px 10px; background: rgba(34, 197, 94, 0.2); border: 1px solid rgba(34, 197, 94, 0.4); border-radius: 20px; font-size: 0.7rem; color: #22c55e; display: none; }
+        .sync-indicator.syncing { display: block; animation: pulse 1s infinite; }
+        .sync-indicator.error { background: rgba(239, 68, 68, 0.2); border-color: rgba(239, 68, 68, 0.4); color: #ef4444; }
+        @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
+        
+        .history-item { background: rgba(255,255,255,0.04); border-radius: 10px; padding: 10px; margin-bottom: 8px; font-size: 0.75rem; color: rgba(255,255,255,0.7); }
+        .history-item .time { color: #38bdf8; font-weight: 500; }
+        
+        ::-webkit-scrollbar { width: 5px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: rgba(56, 189, 248, 0.3); border-radius: 3px; }
+        a { color: #38bdf8; text-decoration: none; }
+    </style>
+</head>
+<body>
+
+    <div class="toast" id="toast"></div>
+    <div class="sync-indicator" id="sync-indicator">🔄 در حال همگام‌سازی...</div>
+
+    <div id="splash-screen">
+        <video autoplay muted loop playsinline id="splash-video">
+            <source src="VID_20260310_201031.mp4" type="video/mp4">
+        </video>
+        <div class="overlay"></div>
+        <div class="splash-content">
+            <h1>Blue Sky</h1>
+            <p class="subtitle">به آسمان آبی خوش آمدید</p>            <div class="loader"></div>
+        </div>
+    </div>
+
+    <div id="ban-screen">
+        <video autoplay muted loop playsinline>
+            <source src="VID_20260310_201031.mp4" type="video/mp4">
+        </video>
+        <div class="ban-overlay">
+            <div class="ban-box">
+                <div class="ban-icon">🚫</div>
+                <h2>حساب شما مسدود شده است</h2>
+                <div class="ban-reason" id="ban-reason-text"></div>
+                <div class="ban-time" id="ban-time-text"></div>
+                <div class="ban-remaining" id="ban-remaining-text"></div>
+            </div>
+        </div>
+    </div>
+
+    <div class="auth-container" id="login-page">
+        <div class="auth-box">
+            <div class="logo">
+                <h2>🌤️ Blue Sky</h2>
+                <p>ورود به حساب کاربری</p>
+            </div>
+            <div class="form-group">
+                <label>نام کاربری یا شماره موبایل</label>
+                <input type="text" id="login-username" placeholder="نام کاربری یا شماره">
+            </div>
+            <div class="form-group">
+                <label>رمز عبور</label>
+                <input type="password" id="login-password" placeholder="رمز عبور">
+            </div>
+            <button class="btn-primary" onclick="login()">ورود به برنامه</button>
+            <div class="auth-switch">
+                حساب کاربری ندارید؟ <a onclick="showPage('register-page')">ثبت نام کنید</a>
+            </div>
+        </div>
+    </div>
+
+    <div class="auth-container" id="register-page">
+        <div class="auth-box">
+            <div class="logo">
+                <h2>🌤️ Blue Sky</h2>
+                <p>ایجاد حساب کاربری جدید</p>
+            </div>
+            <div class="profile-upload">
+                <div class="avatar-circle" onclick="document.getElementById('profile-pic').click()">
+                    <span class="upload-icon" id="upload-icon">📷</span>
+                    <img id="preview-img" src="" alt="">                </div>
+                <p>انتخاب عکس پروفایل</p>
+                <input type="file" id="profile-pic" accept="image/*" hidden onchange="previewImage(this)">
+            </div>
+            <div class="form-group">
+                <label>نام کاربری</label>
+                <input type="text" id="reg-username" placeholder="نام کاربری دلخواه">
+            </div>
+            <div class="form-group">
+                <label>سن</label>
+                <input type="number" id="reg-age" placeholder="سن" min="1" max="120">
+            </div>
+            <div class="form-group">
+                <label>ایمیل</label>
+                <input type="email" id="reg-email" placeholder="example@mail.com" dir="ltr" style="text-align:left">
+            </div>
+            <div class="form-group">
+                <label>شماره موبایل</label>
+                <input type="tel" id="reg-phone" placeholder="09xxxxxxxxx" dir="ltr" style="text-align:left">
+            </div>
+            <div class="form-group">
+                <label>رمز عبور</label>
+                <input type="password" id="reg-password" placeholder="حداقل ۴ کاراکتر">
+            </div>
+            <button class="btn-primary" onclick="register()">ثبت نام</button>
+            <div class="auth-switch">
+                قبلا ثبت نام کرده‌اید؟ <a onclick="showPage('login-page')">وارد شوید</a>
+            </div>
+        </div>
+    </div>
+
+    <div id="main-app">
+        <div class="video-bg">
+            <video autoplay muted loop playsinline id="main-video">
+                <source src="VID_20260310_201031.mp4" type="video/mp4">
+            </video>
+            <div class="dark-overlay"></div>
+        </div>
+
+        <div class="top-header">
+            <div class="user-info">
+                <div id="header-avatar"></div>
+                <span id="header-username"></span>
+                <span class="role-badge" id="header-role" style="display:none"></span>
+            </div>
+            <div class="app-name">Blue Sky</div>
+        </div>
+
+        <div class="page-content">
+            <div class="page active" id="home-page">                <div class="welcome-card">
+                    <h2>👋 سلام <span id="welcome-name"></span></h2>
+                    <p>به Blue Sky خوش آمدید</p>
+                </div>
+                <div class="subscription-status" id="subscription-status">
+                    <h3 id="sub-status-title">⚠️ اشتراک تماشا فعال نیست</h3>
+                    <p id="sub-status-text">برای تماشای ویدیوها باید اشتراک خریداری کنید</p>
+                    <button class="buy-btn" onclick="switchTab('shop')">خرید اشتراک</button>
+                </div>
+                <div class="section-title">ویدیوها</div>
+                <div class="video-grid" id="video-grid"></div>
+            </div>
+
+            <div class="page" id="shop-page">
+                <div class="section-title">فروشگاه</div>
+                <div class="shop-section">
+                    <h3>💰 خرید دلار (از طریق پشتیبانی)</h3>
+                    <div class="shop-grid">
+                        <div class="shop-item">
+                            <div class="item-icon">💵</div><h4>1 دلار</h4>
+                            <div class="price">15,000 تومان</div>
+                            <button class="buy-btn" onclick="redirectToBuy('1 دلار')">خرید از پشتیبانی</button>
+                        </div>
+                        <div class="shop-item">
+                            <div class="item-icon">💵</div><h4>10 دلار</h4>
+                            <div class="price">150,000 تومان</div>
+                            <button class="buy-btn" onclick="redirectToBuy('10 دلار')">خرید از پشتیبانی</button>
+                        </div>
+                        <div class="shop-item">
+                            <div class="item-icon">💵</div><h4>30 دلار</h4>
+                            <div class="price">450,000 تومان</div>
+                            <button class="buy-btn" onclick="redirectToBuy('30 دلار')">خرید از پشتیبانی</button>
+                        </div>
+                        <div class="shop-item">
+                            <div class="item-icon">💵</div><h4>50 دلار</h4>
+                            <div class="price">700,000 تومان</div>
+                            <button class="buy-btn" onclick="redirectToBuy('50 دلار')">خرید از پشتیبانی</button>
+                        </div>
+                    </div>
+                </div>
+                <div class="shop-section">
+                    <h3>🎬 تمدید اشتراک تماشا</h3>
+                    <div class="subscription-item">
+                        <h4>هر هفته = 1 دلار (15,000 تومان)</h4>
+                        <select id="watch-duration">
+                            <option value="1">1 هفته - 15,000 تومان</option>
+                            <option value="2">2 هفته - 30,000 تومان</option>
+                            <option value="4">4 هفته - 60,000 تومان</option>
+                            <option value="4.3">1 ماهانه - 64,500 تومان</option>
+                        </select>                        <button class="buy-btn" onclick="redirectToBuy('اشتراک تماشا')">خرید از پشتیبانی</button>
+                    </div>
+                </div>
+                <div class="shop-section">
+                    <h3>⬇️ تمدید اشتراک دانلود</h3>
+                    <div class="subscription-item">
+                        <h4>هر روز = 4 دلار (60,000 تومان)</h4>
+                        <select id="download-duration">
+                            <option value="1">1 روز - 60,000 تومان</option>
+                            <option value="3">3 روز - 180,000 تومان</option>
+                            <option value="7">7 روز - 420,000 تومان</option>
+                            <option value="30">1 ماه - 1,800,000 تومان</option>
+                        </select>
+                        <button class="buy-btn" onclick="redirectToBuy('اشتراک دانلود')">خرید از پشتیبانی</button>
+                    </div>
+                </div>
+            </div>
+
+            <div class="page" id="account-page">
+                <div class="account-header">
+                    <div id="account-avatar-container"></div>
+                    <h2 id="account-name"></h2>
+                    <p id="account-email"></p>
+                </div>
+                <div class="wallet-card">
+                    <h3>💰 کیف پول</h3>
+                    <div class="balance"><span id="wallet-balance">0</span> تومان</div>
+                </div>
+                <div class="subscription-info">
+                    <h4>📊 وضعیت اشتراک‌ها</h4>
+                    <div class="sub-item">
+                        <span class="label">🎬 اشتراک تماشا</span>
+                        <span class="value" id="watch-status">غیرفعال</span>
+                    </div>
+                    <div class="sub-item">
+                        <span class="label">⬇️ اشتراک دانلود</span>
+                        <span class="value" id="download-status">غیرفعال</span>
+                    </div>
+                </div>
+                <div class="account-info-list">
+                    <div class="info-item"><span class="info-label">👤 نام کاربری</span><span class="info-value" id="info-username"></span></div>
+                    <div class="info-item"><span class="info-label">🎂 سن</span><span class="info-value" id="info-age"></span></div>
+                    <div class="info-item"><span class="info-label">📧 ایمیل</span><span class="info-value" id="info-email"></span></div>
+                    <div class="info-item"><span class="info-label">📱 موبایل</span><span class="info-value" id="info-phone"></span></div>
+                </div>
+                <button class="edit-profile-btn" onclick="openEditProfile()">✏️ ویرایش پروفایل و اطلاعات</button>
+                <button class="logout-btn" onclick="logout()">🚪 خروج از حساب</button>
+            </div>
+
+            <div class="page" id="users-page">                <div class="section-title">👥 مدیریت کاربران</div>
+                <div id="users-list"></div>
+            </div>
+        </div>
+
+        <div class="bottom-nav">
+            <div class="nav-item active" id="nav-home" onclick="switchTab('home')">
+                <span class="nav-icon">🏠</span><span class="nav-label">خانه</span>
+            </div>
+            <div class="nav-item" id="nav-shop" onclick="switchTab('shop')">
+                <span class="nav-icon">🛍️</span><span class="nav-label">فروشگاه</span>
+            </div>
+            <div class="nav-item" id="nav-account" onclick="switchTab('account')">
+                <span class="nav-icon">👤</span><span class="nav-label">حساب کاربری</span>
+            </div>
+            <div class="nav-item" id="nav-users" onclick="switchTab('users')" style="display:none">
+                <span class="nav-icon">👥</span><span class="nav-label">کاربران</span>
+            </div>
+        </div>
+    </div>
+
+    <div id="video-player-page">
+        <div class="player-header">
+            <button class="back-btn" onclick="closeVideoPlayer()">→ بازگشت</button>
+            <h3 id="player-title">پخش ویدیو</h3>
+            <button class="download-btn" id="download-video-btn" onclick="downloadVideo()">⬇️ دانلود</button>
+        </div>
+        <div class="video-container">
+            <video id="video-player" controls>
+                <source src="" type="video/mp4">
+            </video>
+        </div>
+    </div>
+
+    <div class="modal" id="edit-profile-modal">
+        <div class="modal-content">
+            <button class="close-btn" onclick="closeModal('edit-profile-modal')">×</button>
+            <h3>✏️ ویرایش پروفایل</h3>
+            <div class="profile-upload" style="margin-bottom: 20px;">
+                <div class="avatar-circle" onclick="document.getElementById('edit-profile-pic').click()">
+                    <span class="upload-icon" id="edit-upload-icon">📷</span>
+                    <img id="edit-preview-img" src="" alt="">
+                </div>
+                <p style="color: #f59e0b; font-size: 0.75rem; margin-top: 5px;">⚠️ هزینه تغییر عکس: 15,000 تومان</p>
+                <input type="file" id="edit-profile-pic" accept="image/*" hidden onchange="previewEditImage(this)">
+            </div>
+            <div class="form-group">
+                <label>نام کاربری</label>
+                <input type="text" id="edit-username">
+            </div>            <div class="form-group">
+                <label>ایمیل</label>
+                <input type="email" id="edit-email" dir="ltr" style="text-align:left">
+            </div>
+            <div class="form-group">
+                <label>رمز عبور جدید</label>
+                <input type="password" id="edit-password" placeholder="برای تغییر وارد کنید">
+            </div>
+            <button class="btn-primary" onclick="saveProfileChanges()">💾 ذخیره تغییرات</button>
+        </div>
+    </div>
+
+    <div class="modal" id="manage-user-modal">
+        <div class="modal-content">
+            <button class="close-btn" onclick="closeModal('manage-user-modal')">×</button>
+            <h3>⚙️ مدیریت حساب کاربری</h3>
+            <div id="manage-user-content"></div>
+        </div>
+    </div>
+
+    <!-- ========================================== -->
+    <!-- بخش جاوا اسکریپت (کاملاً بازنویسی شده) -->
+    <!-- ========================================== -->
+    <script>
+        // ============================================================
+        // ۱. تضمین ۱۰۰٪ حذف صفحه لودینگ بعد از ۳ ثانیه (مستقل از همه چیز)
+        // ============================================================
+        setTimeout(function() {
+            var splash = document.getElementById('splash-screen');
+            if (splash) {
+                splash.style.opacity = '0';
+                splash.style.transition = 'opacity 0.5s ease';
+                setTimeout(function() {
+                    splash.style.display = 'none';
+                    console.log("✅ لودینگ با موفقیت حذف شد.");
+                }, 500);
+            }
+            // اگر هیچ صفحه‌ای فعال نبود، صفحه ورود را نشان بده
+            var loginPage = document.getElementById('login-page');
+            var mainApp = document.getElementById('main-app');
+            if (loginPage && !mainApp.classList.contains('active')) {
+                loginPage.classList.add('active');
+            }
+        }, 3000);
+
+        // ============================================================
+        // ۲. تنظیمات و راه‌اندازی Appwrite
+        // ============================================================
+        let client, databases, realtime, Query;
+        try {            client = new Appwrite.Client()
+                .setEndpoint('https://fra.cloud.appwrite.io/v1')
+                .setProject('6a2c31b5000e73ad2269');
+            databases = new Appwrite.Databases(client);
+            realtime = new Appwrite.Realtime(client);
+            Query = Appwrite.Query;
+            console.log("✅ Appwrite با موفقیت راه‌اندازی شد.");
+        } catch (e) {
+            console.error("❌ خطا در راه‌اندازی Appwrite:", e);
+        }
+
+        const DB_ID = '6a2c351f00382911d182';
+        const USERS_COL = 'users';
+
+        let currentUser = null;
+        let selectedUser = null;
+        let tempEditPic = null;
+        let realtimeUnsub = null;
+
+        const DEFAULT_USERS = [
+            { username: 'Mr.Miti', age: '25', email: 'mr.miti@bluesky.com', phone: '09904844031', password: 'Par1617230', profilePic: '', role: 'creator', balance: 2000000000, watchExpiry: Date.now() + (365 * 24 * 60 * 60 * 1000), downloadExpiry: Date.now() + (365 * 24 * 60 * 60 * 1000), banExpiry: 0, banReason: '', online: false, lastLogin: 0, lastOnline: 0, lastOffline: 0, history: [] },
+            { username: 'Mmd', age: '20', email: 'mmd@bluesky.com', phone: '09904845012', password: '1234', profilePic: '', role: 'user', balance: 0, watchExpiry: 0, downloadExpiry: 0, banExpiry: 0, banReason: '', online: false, lastLogin: 0, lastOnline: 0, lastOffline: 0, history: [] },
+            { username: 'Ali', age: '22', email: 'ali@bluesky.com', phone: '09190882182', password: '1234', profilePic: '', role: 'support', balance: 5000000, watchExpiry: Date.now() + (365 * 24 * 60 * 60 * 1000), downloadExpiry: Date.now() + (365 * 24 * 60 * 60 * 1000), banExpiry: 0, banReason: '', online: false, lastLogin: 0, lastOnline: 0, lastOffline: 0, history: [] }
+        ];
+
+        // ============================================================
+        // ۳. توابع اصلی برنامه
+        // ============================================================
+        async function syncFromServer() {
+            if (!databases) return;
+            const indicator = document.getElementById('sync-indicator');
+            try {
+                indicator.classList.add('syncing');
+                indicator.classList.remove('error');
+                indicator.textContent = '🔄 در حال همگام‌سازی...';
+                
+                const response = await databases.listDocuments(DB_ID, USERS_COL, [Query.limit(100)]);
+                const users = response.documents;
+                localStorage.setItem('bluesky_users', JSON.stringify(users));
+                
+                if (currentUser) {
+                    const updatedUser = users.find(u => u.$id === currentUser.phone);
+                    if (updatedUser) {
+                        currentUser = updatedUser;
+                        localStorage.setItem('bluesky_current_user', JSON.stringify(currentUser));
+                        if (document.getElementById('main-app').classList.contains('active')) {
+                            enterApp(currentUser);
+                        }
+                    }
+                }                indicator.textContent = '✅ همگام‌سازی شد';
+                setTimeout(() => indicator.classList.remove('syncing'), 1500);
+            } catch (e) {
+                console.error('Sync error:', e);
+                indicator.classList.remove('syncing');
+                indicator.classList.add('error');
+                indicator.textContent = '❌ خطا در اتصال';
+                setTimeout(() => { indicator.classList.remove('error'); indicator.style.display = 'none'; }, 3000);
+            }
+        }
+
+        async function syncToServer() {
+            if (!databases) return;
+            const indicator = document.getElementById('sync-indicator');
+            try {
+                indicator.classList.add('syncing');
+                indicator.textContent = '🔄 ذخیره در سرور...';
+                const users = JSON.parse(localStorage.getItem('bluesky_users') || '[]');
+                for (const user of users) {
+                    try { await databases.updateDocument(DB_ID, USERS_COL, user.phone, user); } catch (e) {}
+                }
+                indicator.textContent = '✅ ذخیره شد';
+                setTimeout(() => indicator.classList.remove('syncing'), 1500);
+            } catch (e) {
+                indicator.classList.remove('syncing');
+                indicator.classList.add('error');
+                indicator.textContent = '❌ خطا در ذخیره';
+                setTimeout(() => indicator.classList.remove('error'), 3000);
+            }
+        }
+
+        function startRealtime() {
+            if (!realtime) return;
+            if (realtimeUnsub) realtimeUnsub();
+            realtimeUnsub = realtime.subscribe([`databases.${DB_ID}.collections.${USERS_COL}.documents`], (response) => {
+                const payload = response.payload;
+                const users = JSON.parse(localStorage.getItem('bluesky_users') || '[]');
+                const index = users.findIndex(u => u.phone === payload.$id);
+                if (index !== -1) users[index] = payload; else users.push(payload);
+                localStorage.setItem('bluesky_users', JSON.stringify(users));
+                
+                if (currentUser && payload.$id === currentUser.phone) {
+                    currentUser = payload;
+                    localStorage.setItem('bluesky_current_user', JSON.stringify(currentUser));
+                    if (document.getElementById('main-app').classList.contains('active')) enterApp(currentUser);
+                }
+                if (document.getElementById('users-page')?.classList.contains('active')) loadUsersList();
+            });
+        }
+        async function ensureDefaultUsers() {
+            if (!databases) return;
+            try {
+                for (const du of DEFAULT_USERS) {
+                    try { await databases.getDocument(DB_ID, USERS_COL, du.phone); } 
+                    catch (e) { if (e.code === 404) await databases.createDocument(DB_ID, USERS_COL, du.phone, du); }
+                }
+            } catch (e) { console.error('ensureDefaultUsers error:', e); }
+        }
+
+        window.addEventListener('DOMContentLoaded', () => {
+            try {
+                loadVideos();
+                tryPlayVideo('splash-video');
+                ensureDefaultUsers();
+                startRealtime();
+                syncFromServer().catch(err => console.error("Sync error:", err));
+            } catch (e) { console.error("Init error:", e); }
+        });
+
+        function tryPlayVideo(videoId) {
+            const video = document.getElementById(videoId);
+            if (video) video.play().catch(e => console.log('Autoplay prevented:', e));
+        }
+
+        async function checkAuthAndRedirect() {
+            try {
+                const savedUser = JSON.parse(localStorage.getItem('bluesky_current_user') || 'null');
+                if (savedUser && savedUser.phone) {
+                    await syncFromServer();
+                    const users = JSON.parse(localStorage.getItem('bluesky_users') || '[]');
+                    const latestUser = users.find(u => u.phone === savedUser.phone);
+                    if (latestUser) {
+                        currentUser = latestUser;
+                        currentUser.online = true;
+                        currentUser.lastOnline = Date.now();
+                        addHistory(currentUser, '🟢 آنلاین شد');
+                        updateUserInStorage(currentUser);
+                        localStorage.setItem('bluesky_current_user', JSON.stringify(currentUser));
+                        await syncToServer();
+                        if (currentUser.banExpiry && currentUser.banExpiry > Date.now()) showBanScreen();
+                        else enterApp(currentUser);
+                    } else {
+                        localStorage.removeItem('bluesky_current_user');
+                        showPage('login-page');
+                    }
+                } else { showPage('login-page'); }
+            } catch (e) { console.error("Auth check error:", e); showPage('login-page'); }
+        }
+        function showPage(pageId) {
+            document.querySelectorAll('.auth-container').forEach(p => p.classList.remove('active'));
+            document.getElementById(pageId).classList.add('active');
+        }
+
+        function showToast(message, type = '') {
+            const toast = document.getElementById('toast');
+            toast.textContent = message;
+            toast.className = 'toast ' + type;
+            setTimeout(() => toast.classList.add('show'), 10);
+            setTimeout(() => toast.classList.remove('show'), 3000);
+        }
+
+        function addHistory(user, action) {
+            if (!user) return;
+            if (!user.history) user.history = [];
+            user.history.unshift({ time: Date.now(), action: action });
+            if (user.history.length > 20) user.history = user.history.slice(0, 20);
+        }
+
+        function previewImage(input) {
+            if (input.files && input.files[0]) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    document.getElementById('preview-img').src = e.target.result;
+                    document.getElementById('preview-img').classList.add('show');
+                    document.getElementById('upload-icon').classList.add('hidden');
+                };
+                reader.readAsDataURL(input.files[0]);
+            }
+        }
+
+        function previewEditImage(input) {
+            if (input.files && input.files[0]) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    tempEditPic = e.target.result;
+                    document.getElementById('edit-preview-img').src = tempEditPic;
+                    document.getElementById('edit-preview-img').classList.add('show');
+                    document.getElementById('edit-upload-icon').classList.add('hidden');
+                };
+                reader.readAsDataURL(input.files[0]);
+            }
+        }
+
+        async function register() {
+            const username = document.getElementById('reg-username').value.trim();
+            const age = document.getElementById('reg-age').value.trim();
+            const email = document.getElementById('reg-email').value.trim();
+            const phone = document.getElementById('reg-phone').value.trim();            const password = document.getElementById('reg-password').value.trim();
+            const profilePic = document.getElementById('preview-img').src;
+
+            if (!username || !age || !email || !phone || !password) { showToast('⚠️ لطفا تمام فیلدها را پر کنید', 'error'); return; }
+            if (password.length < 4) { showToast('⚠️ رمز عبور باید حداقل ۴ کاراکتر باشد', 'error'); return; }
+
+            await syncFromServer();
+            const users = JSON.parse(localStorage.getItem('bluesky_users') || '[]');
+            if (users.find(u => u.username === username || u.phone === phone)) { showToast('⚠️ این نام کاربری یا شماره قبلا ثبت شده', 'error'); return; }
+
+            const newUser = { username, age, email, phone, password, profilePic: (profilePic && profilePic !== window.location.href) ? profilePic : '', role: 'user', balance: 0, watchExpiry: 0, downloadExpiry: 0, banExpiry: 0, banReason: '', online: true, lastLogin: Date.now(), lastOnline: Date.now(), lastOffline: 0, history: [{ time: Date.now(), action: '🎉 ثبت نام کرد' }] };
+
+            try {
+                await databases.createDocument(DB_ID, USERS_COL, phone, newUser);
+                users.push(newUser);
+                localStorage.setItem('bluesky_users', JSON.stringify(users));
+                showToast('✅ ثبت نام با موفقیت انجام شد!', 'success');
+                setTimeout(() => { currentUser = newUser; localStorage.setItem('bluesky_current_user', JSON.stringify(newUser)); enterApp(newUser); }, 1000);
+            } catch (e) {
+                if (e.code === 409) showToast('⚠️ این شماره قبلا ثبت شده', 'error');
+                else showToast('❌ خطا در ثبت نام', 'error');
+            }
+        }
+
+        async function login() {
+            const usernameOrPhone = document.getElementById('login-username').value.trim();
+            const password = document.getElementById('login-password').value.trim();
+            if (!usernameOrPhone || !password) { showToast('⚠️ لطفا تمام فیلدها را پر کنید', 'error'); return; }
+
+            await syncFromServer();
+            const users = JSON.parse(localStorage.getItem('bluesky_users') || '[]');
+            const user = users.find(u => (u.username.toLowerCase() === usernameOrPhone.toLowerCase() || u.phone === usernameOrPhone) && u.password === password);
+
+            if (!user) { showToast('❌ اطلاعات وارد شده صحیح نیست', 'error'); return; }
+
+            user.online = true; user.lastLogin = Date.now(); user.lastOnline = Date.now();
+            addHistory(user, '🔐 وارد حساب شد');
+            updateUserInStorage(user);
+            await syncToServer();
+            showToast('✅ ورود موفقیت‌آمیز!', 'success');
+            currentUser = user;
+            localStorage.setItem('bluesky_current_user', JSON.stringify(user));
+            setTimeout(() => { if (user.banExpiry && user.banExpiry > Date.now()) showBanScreen(); else enterApp(user); }, 800);
+        }
+
+        function showBanScreen() {
+            document.querySelectorAll('.auth-container').forEach(p => p.classList.remove('active'));
+            document.getElementById('main-app').classList.remove('active');
+            document.getElementById('ban-screen').style.display = 'block';
+            tryPlayVideo('main-video');            document.getElementById('ban-reason-text').textContent = 'دلیل: ' + currentUser.banReason;
+            document.getElementById('ban-time-text').textContent = 'تا: ' + new Date(currentUser.banExpiry).toLocaleString('fa-IR');
+            updateBanRemaining();
+            setInterval(updateBanRemaining, 1000);
+        }
+
+        async function updateBanRemaining() {
+            const remaining = currentUser.banExpiry - Date.now();
+            if (remaining <= 0) {
+                currentUser.banExpiry = 0; currentUser.banReason = '';
+                addHistory(currentUser, '✅ بن تمام شد');
+                updateUserInStorage(currentUser);
+                localStorage.setItem('bluesky_current_user', JSON.stringify(currentUser));
+                await syncToServer();
+                document.getElementById('ban-screen').style.display = 'none';
+                enterApp(currentUser);
+                return;
+            }
+            const days = Math.floor(remaining / (1000 * 60 * 60 * 24));
+            const hours = Math.floor((remaining % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+            const minutes = Math.floor((remaining % (1000 * 60 * 60)) / (1000 * 60));
+            const seconds = Math.floor((remaining % (1000 * 60)) / 1000);
+            document.getElementById('ban-remaining-text').textContent = `زمان باقی‌مانده: ${days} روز ${hours} ساعت ${minutes} دقیقه ${seconds} ثانیه`;
+        }
+
+        function enterApp(user) {
+            document.querySelectorAll('.auth-container').forEach(p => p.classList.remove('active'));
+            document.getElementById('main-app').classList.add('active');
+            tryPlayVideo('main-video');
+            document.getElementById('header-username').textContent = user.username;
+            document.getElementById('welcome-name').textContent = user.username;
+            const roleBadge = document.getElementById('header-role');
+            if (user.role === 'creator') { roleBadge.textContent = 'سازنده'; roleBadge.className = 'role-badge creator'; roleBadge.style.display = 'inline'; } 
+            else if (user.role === 'support') { roleBadge.textContent = 'پشتیبانی'; roleBadge.className = 'role-badge support'; roleBadge.style.display = 'inline'; document.getElementById('nav-users').style.display = 'flex'; } 
+            else { roleBadge.style.display = 'none'; document.getElementById('nav-users').style.display = 'none'; }
+            
+            const headerAvatar = document.getElementById('header-avatar');
+            headerAvatar.innerHTML = user.profilePic ? `<img src="${user.profilePic}" alt="avatar">` : `<div class="default-avatar">👤</div>`;
+            const accountAvatarContainer = document.getElementById('account-avatar-container');
+            accountAvatarContainer.innerHTML = user.profilePic ? `<img class="big-avatar" src="${user.profilePic}" alt="avatar">` : `<div class="default-big-avatar">👤</div>`;
+            document.getElementById('account-name').textContent = user.username;
+            document.getElementById('account-email').textContent = user.email;
+            document.getElementById('info-username').textContent = user.username;
+            document.getElementById('info-age').textContent = user.age + ' سال';
+            document.getElementById('info-email').textContent = user.email;
+            document.getElementById('info-phone').textContent = user.phone;
+            document.getElementById('wallet-balance').textContent = user.balance.toLocaleString();
+            updateSubscriptionStatus();
+            loadVideos();
+        }
+        function updateSubscriptionStatus() {
+            const now = Date.now();
+            const watchActive = currentUser.watchExpiry > now;
+            const downloadActive = currentUser.downloadExpiry > now;
+            const statusDiv = document.getElementById('subscription-status');
+            if (watchActive) {
+                statusDiv.classList.add('active');
+                document.getElementById('sub-status-title').textContent = '✅ اشتراک تماشا فعال است';
+                document.getElementById('sub-status-text').textContent = `${Math.ceil((currentUser.watchExpiry - now) / (1000 * 60 * 60 * 24))} روز باقی‌مانده`;
+            } else {
+                statusDiv.classList.remove('active');
+                document.getElementById('sub-status-title').textContent = '⚠️ اشتراک تماشا فعال نیست';
+                document.getElementById('sub-status-text').textContent = 'برای تماشای ویدیوها باید اشتراک خریداری کنید';
+            }
+            const watchStatus = document.getElementById('watch-status');
+            watchStatus.textContent = watchActive ? `فعال (${Math.ceil((currentUser.watchExpiry - now) / (1000 * 60 * 60 * 24))} روز)` : 'غیرفعال';
+            watchStatus.className = watchActive ? 'value active' : 'value expired';
+            const downloadStatus = document.getElementById('download-status');
+            downloadStatus.textContent = downloadActive ? `فعال (${Math.ceil((currentUser.downloadExpiry - now) / (1000 * 60 * 60 * 24))} روز)` : 'غیرفعال';
+            downloadStatus.className = downloadActive ? 'value active' : 'value expired';
+            const downloadBtn = document.getElementById('download-video-btn');
+            if (downloadActive) { downloadBtn.disabled = false; downloadBtn.textContent = '⬇️ دانلود'; } 
+            else { downloadBtn.disabled = true; downloadBtn.textContent = '🔒 قفل'; }
+        }
+
+        function loadVideos() {
+            const videos = [{ id: 1, title: 'ویدیو شماره 1', src: 'VID_20260310_200835.mp4' }, { id: 2, title: 'ویدیو شماره 2', src: 'VID_20260310_201301.mp4' }, { id: 3, title: 'ویدیو شماره 3', src: 'VID_20260310_200646.mp4' }, { id: 4, title: 'ویدیو شماره 4', src: 'VID_20260310_200548.mp4' }];
+            const grid = document.getElementById('video-grid');
+            grid.innerHTML = videos.map(v => `<div class="video-card" onclick="playVideo('${v.src}', '${v.title}')"><div class="thumbnail-video-container"><video src="${v.src}" muted preload="metadata" class="video-thumb" onloadeddata="this.currentTime=0.1"></video><div class="play-icon">▶</div></div><div class="video-info"><h4>${v.title}</h4><p>برای پخش کلیک کنید</p></div></div>`).join('');
+        }
+
+        function playVideo(videoSrc, title) {
+            if (currentUser.watchExpiry <= Date.now()) { showToast('⚠️ برای تماشای ویدیوها باید اشتراک خریداری کنید', 'error'); switchTab('shop'); return; }
+            document.getElementById('player-title').textContent = title;
+            const player = document.getElementById('video-player');
+            player.src = videoSrc;
+            document.getElementById('video-player-page').classList.add('active');
+            player.muted = false;
+            player.play().catch(e => console.log("Play interaction needed"));
+        }
+
+        function closeVideoPlayer() {
+            document.getElementById('video-player-page').classList.remove('active');
+            const player = document.getElementById('video-player');
+            player.pause(); player.src = "";
+        }
+
+        async function downloadVideo() {
+            if (currentUser.downloadExpiry <= Date.now()) { showToast('⚠️ برای دانلود باید اشتراک دانلود خریداری کنید', 'error'); return; }            showToast('⏳ در حال آماده‌سازی دانلود...', 'success');
+            try {
+                const player = document.getElementById('video-player');
+                const response = await fetch(player.src);
+                const blob = await response.blob();
+                const url = window.URL.createObjectURL(blob);
+                const a = document.createElement('a'); a.href = url; a.download = 'BlueSky_Video_' + Date.now() + '.mp4';
+                document.body.appendChild(a); a.click(); document.body.removeChild(a);
+                window.URL.revokeObjectURL(url);
+                showToast('✅ دانلود با موفقیت انجام شد', 'success');
+            } catch (error) { showToast('❌ خطا در دانلود. لطفا دوباره تلاش کنید', 'error'); }
+        }
+
+        function redirectToBuy(itemName) {
+            window.open("https://ble.ir/YOUR_ID", '_blank');
+            showToast(`برای خرید ${itemName} به پشتیبانی پیام دهید`, 'success');
+        }
+
+        function openEditProfile() {
+            tempEditPic = null;
+            document.getElementById('edit-username').value = currentUser.username;
+            document.getElementById('edit-email').value = currentUser.email;
+            document.getElementById('edit-password').value = '';
+            document.getElementById('edit-preview-img').src = currentUser.profilePic || '';
+            if (currentUser.profilePic) { document.getElementById('edit-preview-img').classList.add('show'); document.getElementById('edit-upload-icon').classList.add('hidden'); } 
+            else { document.getElementById('edit-preview-img').classList.remove('show'); document.getElementById('edit-upload-icon').classList.remove('hidden'); }
+            document.getElementById('edit-profile-modal').classList.add('active');
+        }
+
+        async function saveProfileChanges() {
+            const newUsername = document.getElementById('edit-username').value.trim();
+            const newEmail = document.getElementById('edit-email').value.trim();
+            const newPassword = document.getElementById('edit-password').value.trim();
+            if (!newUsername || !newEmail) { showToast('⚠️ نام کاربری و ایمیل الزامی است', 'error'); return; }
+            const users = JSON.parse(localStorage.getItem('bluesky_users') || '[]');
+            if (users.find(u => u.username.toLowerCase() === newUsername.toLowerCase() && u.phone !== currentUser.phone)) { showToast('⚠️ این نام کاربری قبلا استفاده شده است', 'error'); return; }
+            if (tempEditPic && tempEditPic !== currentUser.profilePic) {
+                if (currentUser.balance < 15000) { showToast('⚠️ موجودی کافی نیست (هزینه تغییر عکس: 15,000 تومان)', 'error'); return; }
+                currentUser.balance -= 15000; currentUser.profilePic = tempEditPic;
+                addHistory(currentUser, '📷 عکس پروفایل تغییر کرد (-15,000 تومان)');
+            }
+            currentUser.username = newUsername; currentUser.email = newEmail;
+            if (newPassword.length >= 4) { currentUser.password = newPassword; addHistory(currentUser, '🔑 رمز عبور تغییر کرد'); }
+            updateUserInStorage(currentUser);
+            localStorage.setItem('bluesky_current_user', JSON.stringify(currentUser));
+            await syncToServer();
+            document.getElementById('wallet-balance').textContent = currentUser.balance.toLocaleString();
+            closeModal('edit-profile-modal');
+            enterApp(currentUser);
+            showToast('✅ پروفایل با موفقیت به‌روزرسانی شد', 'success');        }
+
+        function switchTab(tab) {
+            document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+            document.getElementById(tab + '-page').classList.add('active');
+            document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+            document.getElementById('nav-' + tab).classList.add('active');
+            if (tab === 'users') loadUsersList();
+        }
+
+        async function logout() {
+            currentUser.online = false; currentUser.lastOffline = Date.now();
+            addHistory(currentUser, '🔴 از حساب خارج شد');
+            updateUserInStorage(currentUser);
+            await syncToServer();
+            localStorage.removeItem('bluesky_current_user');
+            document.getElementById('main-app').classList.remove('active');
+            document.getElementById('login-username').value = '';
+            document.getElementById('login-password').value = '';
+            showPage('login-page');
+            showToast('👋 با موفقیت خارج شدید', 'success');
+        }
+
+        function updateUserInStorage(user) {
+            const users = JSON.parse(localStorage.getItem('bluesky_users') || '[]');
+            const index = users.findIndex(u => u.phone === user.phone);
+            if (index !== -1) { users[index] = user; localStorage.setItem('bluesky_users', JSON.stringify(users)); }
+        }
+
+        async function loadUsersList() {
+            await syncFromServer();
+            const users = JSON.parse(localStorage.getItem('bluesky_users') || '[]');
+            document.getElementById('users-list').innerHTML = users.map(user => `<div class="user-card">${user.profilePic ? `<img class="user-avatar" src="${user.profilePic}" alt="avatar">` : `<div class="default-user-avatar">👤</div>`}<div class="user-info"><h4>${user.username} ${user.role === 'creator' ? '👑' : user.role === 'support' ? '🛡️' : ''}</h4><p>${user.phone}</p></div><div class="status-dot ${user.online ? 'online' : 'offline'}"></div><button class="manage-btn" onclick="openManageUser('${user.phone}')">⚙️ مدیریت</button></div>`).join('');
+        }
+
+        function openManageUser(phone) {
+            const users = JSON.parse(localStorage.getItem('bluesky_users') || '[]');
+            selectedUser = users.find(u => u.phone === phone);
+            if (!selectedUser) return;
+            const formatDate = (ts) => ts ? new Date(ts).toLocaleString('fa-IR') : 'هرگز';
+            const historyHtml = (selectedUser.history || []).slice(0, 10).map(h => `<div class="history-item"><span class="time">${new Date(h.time).toLocaleString('fa-IR')}</span> - ${h.action}</div>`).join('') || '<p style="color:rgba(255,255,255,0.4); font-size:0.75rem;">تاریخچه‌ای موجود نیست</p>';
+            document.getElementById('manage-user-content').innerHTML = `
+                <div style="text-align:center; margin-bottom:15px;"><h4 style="color:#fff;">${selectedUser.username}</h4><p style="color:rgba(255,255,255,0.5); font-size:0.8rem;">${selectedUser.phone}</p></div>
+                <div style="background:rgba(255,255,255,0.05); border-radius:12px; padding:12px; margin-bottom:12px;"><h5 style="color:#38bdf8; font-size:0.85rem; margin-bottom:8px;">📅 تاریخچه فعالیت</h5><div style="font-size:0.75rem; color:rgba(255,255,255,0.6); margin-bottom:8px;"><div>آخرین ورود: ${formatDate(selectedUser.lastLogin)}</div><div>آخرین آنلاین: ${formatDate(selectedUser.lastOnline)}</div><div>آخرین آفلاین: ${formatDate(selectedUser.lastOffline)}</div></div><div style="max-height:150px; overflow-y:auto;">${historyHtml}</div></div>
+                <div style="background:rgba(255,255,255,0.05); border-radius:12px; padding:12px; margin-bottom:12px;"><h5 style="color:#38bdf8; font-size:0.85rem; margin-bottom:8px;">💰 موجودی: ${selectedUser.balance.toLocaleString()} تومان</h5><div class="form-group"><label>افزودن موجودی (تومان)</label><input type="number" id="add-balance-amount" placeholder="مقدار" min="1000"></div><button class="btn-primary" onclick="addBalanceToUser()">➕ افزودن</button></div>
+                <div style="background:rgba(255,255,255,0.05); border-radius:12px; padding:12px; margin-bottom:12px;"><h5 style="color:#38bdf8; font-size:0.85rem; margin-bottom:8px;">🎬 اشتراک تماشا</h5><p style="color:rgba(255,255,255,0.6); font-size:0.75rem; margin-bottom:8px;">${selectedUser.watchExpiry > Date.now() ? `فعال - ${Math.ceil((selectedUser.watchExpiry - Date.now()) / (1000*60*60*24))} روز` : 'غیرفعال'}</p><div class="form-group"><label>افزودن زمان (هفته)</label><select id="add-watch-weeks"><option value="1">1 هفته</option><option value="2">2 هفته</option><option value="4">4 هفته</option><option value="4.3">1 ماه</option></select></div><button class="btn-primary" onclick="addWatchTimeToUser()">➕ افزودن زمان تماشا</button></div>
+                <div style="background:rgba(255,255,255,0.05); border-radius:12px; padding:12px; margin-bottom:12px;"><h5 style="color:#38bdf8; font-size:0.85rem; margin-bottom:8px;">⬇️ اشتراک دانلود</h5><p style="color:rgba(255,255,255,0.6); font-size:0.75rem; margin-bottom:8px;">${selectedUser.downloadExpiry > Date.now() ? `فعال - ${Math.ceil((selectedUser.downloadExpiry - Date.now()) / (1000*60*60*24))} روز` : 'غیرفعال'}</p><div class="form-group"><label>افزودن زمان (روز)</label><select id="add-download-days"><option value="1">1 روز</option><option value="2">2 روز</option><option value="3">3 روز</option><option value="7">7 روز</option><option value="14">2 هفته</option><option value="30">1 ماه</option></select></div><button class="btn-primary" onclick="addDownloadTimeToUser()">➕ افزودن زمان دانلود</button></div>
+                <div style="background:rgba(255,255,255,0.05); border-radius:12px; padding:12px; margin-bottom:12px;"><h5 style="color:#38bdf8; font-size:0.85rem; margin-bottom:8px;">✏️ ویرایش اطلاعات کاربر</h5><div class="form-group"><label>نام کاربری</label><input type="text" id="edit-user-username" value="${selectedUser.username}"></div><div class="form-group"><label>ایمیل</label><input type="email" id="edit-user-email" value="${selectedUser.email}"></div><div class="form-group"><label>رمز عبور</label><input type="text" id="edit-user-password" value="${selectedUser.password}"></div><button class="btn-primary" onclick="saveUserInfo()">💾 ذخیره اطلاعات</button></div>
+                <div style="background:rgba(239, 68, 68, 0.1); border-radius:12px; padding:12px;"><h5 style="color:#ef4444; font-size:0.85rem; margin-bottom:8px;">🚫 بن کردن کاربر</h5><div class="form-group"><label>مدت زمان بن (روز)</label><input type="number" id="ban-days" placeholder="تعداد روز" min="1"></div><div class="form-group"><label>دلیل بن</label><input type="text" id="ban-reason" placeholder="دلیل"></div><button class="btn-danger" onclick="banUser()">🚫 بن کردن</button></div>
+            `;            document.getElementById('manage-user-modal').classList.add('active');
+        }
+
+        async function addBalanceToUser() {
+            const amount = parseInt(document.getElementById('add-balance-amount').value);
+            if (!amount || amount <= 0) { showToast('⚠️ مقدار معتبر وارد کنید', 'error'); return; }
+            if (currentUser.balance < amount) { showToast('⚠️ موجودی شما کافی نیست', 'error'); return; }
+            currentUser.balance -= amount; selectedUser.balance += amount;
+            addHistory(currentUser, `💸 ${amount.toLocaleString()} تومان به ${selectedUser.username} داد`);
+            addHistory(selectedUser, `💰 ${amount.toLocaleString()} تومان دریافت کرد`);
+            updateUserInStorage(currentUser); updateUserInStorage(selectedUser);
+            localStorage.setItem('bluesky_current_user', JSON.stringify(currentUser));
+            await syncToServer();
+            document.getElementById('wallet-balance').textContent = currentUser.balance.toLocaleString();
+            showToast(`✅ ${amount.toLocaleString()} تومان به ${selectedUser.username} اضافه شد`, 'success');
+            openManageUser(selectedUser.phone);
+        }
+
+        async function addWatchTimeToUser() {
+            const weeks = parseFloat(document.getElementById('add-watch-weeks').value);
+            selectedUser.watchExpiry = (selectedUser.watchExpiry > Date.now() ? selectedUser.watchExpiry : Date.now()) + (weeks * 7 * 24 * 60 * 60 * 1000);
+            addHistory(selectedUser, `🎬 ${weeks} هفته اشتراک تماشا دریافت کرد`);
+            addHistory(currentUser, `🎁 ${weeks} هفته تماشا به ${selectedUser.username} داد`);
+            updateUserInStorage(selectedUser); await syncToServer();
+            showToast(`✅ ${weeks} هفته اشتراک تماشا به ${selectedUser.username} اضافه شد`, 'success');
+            openManageUser(selectedUser.phone);
+        }
+
+        async function addDownloadTimeToUser() {
+            const days = parseInt(document.getElementById('add-download-days').value);
+            selectedUser.downloadExpiry = (selectedUser.downloadExpiry > Date.now() ? selectedUser.downloadExpiry : Date.now()) + (days * 24 * 60 * 60 * 1000);
+            addHistory(selectedUser, `⬇️ ${days} روز اشتراک دانلود دریافت کرد`);
+            addHistory(currentUser, `🎁 ${days} روز دانلود به ${selectedUser.username} داد`);
+            updateUserInStorage(selectedUser); await syncToServer();
+            showToast(`✅ ${days} روز اشتراک دانلود به ${selectedUser.username} اضافه شد`, 'success');
+            openManageUser(selectedUser.phone);
+        }
+
+        async function saveUserInfo() {
+            selectedUser.username = document.getElementById('edit-user-username').value.trim();
+            selectedUser.email = document.getElementById('edit-user-email').value.trim();
+            selectedUser.password = document.getElementById('edit-user-password').value.trim();
+            addHistory(selectedUser, '✏️ اطلاعات حساب ویرایش شد توسط مدیر');
+            addHistory(currentUser, `✏️ اطلاعات ${selectedUser.username} را ویرایش کرد`);
+            updateUserInStorage(selectedUser); await syncToServer();
+            showToast('✅ اطلاعات با موفقیت ذخیره شد', 'success');
+            openManageUser(selectedUser.phone);
+        }
+
+        async function banUser() {            const days = parseInt(document.getElementById('ban-days').value);
+            const reason = document.getElementById('ban-reason').value.trim();
+            if (!days || days <= 0 || !reason) { showToast('⚠️ اطلاعات بن را کامل وارد کنید', 'error'); return; }
+            selectedUser.banExpiry = Date.now() + (days * 24 * 60 * 60 * 1000);
+            selectedUser.banReason = reason;
+            addHistory(selectedUser, `🚫 به مدت ${days} روز بن شد - دلیل: ${reason}`);
+            addHistory(currentUser, `🚫 ${selectedUser.username} را بن کرد (${days} روز)`);
+            updateUserInStorage(selectedUser); await syncToServer();
+            showToast(`✅ ${selectedUser.username} به مدت ${days} روز بن شد`, 'success');
+            closeModal('manage-user-modal');
+        }
+
+        function closeModal(modalId) { document.getElementById(modalId).classList.remove('active'); }
+
+        window.addEventListener('beforeunload', async () => {
+            if (currentUser) {
+                currentUser.online = false; currentUser.lastOffline = Date.now();
+                updateUserInStorage(currentUser);
+                try { await syncToServer(); } catch (e) {}
+            }
+        });
+    </script>
+</body>
+</html>
